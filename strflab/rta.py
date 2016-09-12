@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
-from .util import check_input, make_stimulus_with_delay
+from .util import check_input, prepare_stimulus, truncate_array
 from sklearn.preprocessing import scale
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 
 
-def sta(stimulus_list, response_list, config=None):
+def rta(stimulus_list, response_list, config=None):
     """compute spike triggered average
 
     while this seems to be slower than original strf, I think this is due to algorithm.
@@ -49,10 +49,10 @@ def sta(stimulus_list, response_list, config=None):
     delays = config_actual['delays']
     truncate_config = config_actual['truncate']
     stimulus_flat_all = np.concatenate(
-        [np.concatenate([make_stimulus_with_delay(stimulus_flat, d, truncate_config) for d in delays], axis=1) for
+        [np.concatenate([prepare_stimulus(stimulus_flat, d, truncate_config) for d in delays], axis=1) for
          stimulus_flat in stimulus_flat_list], axis=0)
     n_stimulus_all, _ = stimulus_flat_all.shape
-    response_all = np.concatenate(response_list, axis=0)
+    response_all = np.concatenate([truncate_array(resp, truncate_config) for resp in response_list], axis=0)
 
     # ok. let's do the regression.
     additional_pars = config_actual['solver_pars']

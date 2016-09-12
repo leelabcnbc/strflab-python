@@ -43,7 +43,7 @@ def check_input(stimulus_list, response_list):
     return stimulus_list_good, response_list_good, kernel_shape_first, neuron_number_first
 
 
-def make_stimulus_with_delay(stimulus_flat, delay, truncate_pars=(0, 0)):
+def prepare_stimulus(stimulus_flat, delay, truncate_pars=(0, 0)):
     assert stimulus_flat.ndim > 1
     assert abs(delay) < stimulus_flat.shape[0]
     filler = np.zeros((abs(delay),) + stimulus_flat.shape[1:], dtype=stimulus_flat.dtype)
@@ -54,15 +54,20 @@ def make_stimulus_with_delay(stimulus_flat, delay, truncate_pars=(0, 0)):
         # see the future; remove first (-delay)
         result = np.concatenate([stimulus_flat[(-delay):], filler], axis=0)
     # then let's truncate.
-    truncate_before, truncate_after = truncate_pars
-    assert truncate_before >= 0 and truncate_after >= 0
-    if truncate_before > 0:
-        result = result[truncate_before:]
-    if truncate_after > 0:
-        result = result[:-truncate_after]
-
+    result = truncate_array(result, truncate_pars)
     assert not np.may_share_memory(result, stimulus_flat)
     return result
+
+
+def truncate_array(arr, truncate_config):
+    truncate_before, truncate_after = truncate_config
+    assert truncate_before >= 0 and truncate_after >= 0
+    if truncate_before > 0:
+        arr = arr[truncate_before:]
+    if truncate_after > 0:
+        arr = arr[:-truncate_after]
+
+    return arr
 
 
 class Timer(object):
