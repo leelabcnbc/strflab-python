@@ -25,6 +25,7 @@ def flatten_stimulus_list(stimulus_list):
 
 
 def _prepare_stimulus_all_delays_one_trial(stimulus_flat, delays, truncate_pars):
+    assert stimulus_flat.ndim == 2
     return np.concatenate([_prepare_stimulus_one_delay(stimulus_flat, d, truncate_pars) for d in delays], axis=1)
 
 
@@ -80,6 +81,22 @@ def check_input(stimulus_list, response_list):
     return stimulus_list_good, response_list_good, kernel_shape_first, neuron_number_first
 
 
+def reshape_kernel(kernels_recovered, stim_shape, num_delay, num_neuron, multiple_kernel_per_neuron=False):
+    assert np.all(np.asarray(stim_shape)>0) and num_delay > 0
+    num_kernel_element = num_delay*np.prod(np.asarray(stim_shape))
+    assert num_neuron > 0 and num_kernel_element > 0
+    if multiple_kernel_per_neuron:
+        a, b, c = kernels_recovered.shape
+        assert b > 0
+        new_shape = (num_neuron, b, num_delay) + stim_shape
+    else:
+        a, c = kernels_recovered.shape
+        new_shape = (num_neuron, num_delay) + stim_shape
+    assert (a, c) == (num_neuron, num_kernel_element)
+
+    return np.reshape(kernels_recovered, new_shape)
+
+
 def _check_input_one(stimulus, response):
     # for maximum precision, some many procedures only give double output.
     stimulus = np.asarray(stimulus)
@@ -91,3 +108,14 @@ def _check_input_one(stimulus, response):
     ret = ret + (stimulus.shape[1:],)
     ret = ret + (response.shape[1],)
     return ret
+
+
+def cov_matrix(stim):
+    N, D = stim.shape
+    assert N > 1 and D > 1  # when D is 1, returned might be a scalar...
+    # compute covariance matrix
+    # notice that while np.cov would subtract the mean, you should do it yourself when passing stim into STA and STC.
+    # this norms data by N-1
+    cov = np.cov(stim, rowvar=False)
+    assert cov.shape == (D, D)
+    return cov

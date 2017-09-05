@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from strflab import test_util, preprocessing
+from itertools import product
 
 rng_stream_global = test_util.rng_stream
 
@@ -165,6 +166,78 @@ class TestPreprocessing(unittest.TestCase):
                 stim_list_delayed_2 = [truncate_alternative(stim_this, truncate_config) for stim_this in
                                        delay_all_array(stim_list, delays_this)]
                 self.check_two_list_equal(stim_list_delayed_2, stim_list_delayed)
+
+    def generate_a_list_of_kernels(self, ndim, num_neuron, num_filter_per_neuron, delays_this):
+        for x in delays_this:
+            assert -2 <= x <= 2
+        shape_this = tuple(test_util.get_random_shape(ndim, ndim, 1, 10))
+
+        num_kernel_pixel_each = np.product(np.asarray(shape_this)) * len(delays_this)
+        result_flat_kernel = np.empty((num_neuron, num_filter_per_neuron, num_kernel_pixel_each))
+
+        ref_structured_kernel = np.empty((num_neuron, num_filter_per_neuron, len(delays_this),) + shape_this)
+
+        for i_neuron in range(num_neuron):
+            stim_list = []
+            for i_filter in range(num_filter_per_neuron):
+                stimulus_this = test_util.get_random_stimulus(shape_this, 5)
+                stim_list.append(stimulus_this)
+            assert len(stim_list) == num_filter_per_neuron
+            # prepare delayed version
+            stim_list_flat = preprocessing.flatten_stimulus_list(stim_list)
+            stim_list_delayed = preprocessing.prepare_stimulus_all_delays_all_trials(stim_list_flat,
+                                                                                     delays_this,
+                                                                                     truncate_pars=(2, 2))
+            assert len(stim_list_delayed) == num_filter_per_neuron
+            for i_filter in range(num_filter_per_neuron):
+                assert stim_list_delayed[i_filter].shape == (1, num_kernel_pixel_each)
+                # fill in
+                result_flat_kernel[i_neuron, i_filter] = stim_list_delayed[i_filter].ravel()
+
+                # construct the structured one
+                # fetch data from different delays
+                for i_delay, delay in enumerate(delays_this):
+                    # -, not +, as delay > 0 means past
+                    ref_structured_kernel[i_neuron, i_filter, i_delay] = stim_list[i_filter][2 - delay]
+        return result_flat_kernel, ref_structured_kernel, shape_this
+
+    def test_reshape_kernel_single(self):
+        for delays_this, ndim, num_neuron, num_filter, multi in product([[0], [-1, 1], [-2, -1, 0, 1], ],
+                                                                        (1, 4), (1, 10), (1, 10), (True, False)):
+            if num_filter > 1 and not multi:
+                continue
+            result_flat_kernel, ref_structured_kernel, shape_this = self.generate_a_list_of_kernels(
+                ndim, num_neuron, num_filter, delays_this
+            )
+            print(result_flat_kernel.shape, ref_structured_kernel.shape)
+
+            if multi:
+                structured_kernel = preprocessing.reshape_kernel(result_flat_kernel, shape_this,
+                                                                 len(delays_this), num_neuron, multi)
+                self.assertTrue(np.array_equal(structured_kernel, ref_structured_kernel))
+            else:
+                assert result_flat_kernel.shape[1] == 1
+                structured_kernel = preprocessing.reshape_kernel(result_flat_kernel[:, 0], shape_this,
+                                                                 len(delays_this), num_neuron, multi)
+                self.assertTrue(np.array_equal(structured_kernel, ref_structured_kernel[:, 0]))
+
+    def test_cov(self):
+        # just test computation of cov
+        for _ in range(10):
+            shape_this = tuple(test_util.get_random_shape(1, 1, low=2, high=100))
+            num_stimulus_this = rng_stream_global.randint(100, 10000)
+            stimulus_this = test_util.get_random_stimulus(shape_this, num_stimulus_this)
+            assert stimulus_this.shape == (num_stimulus_this, shape_this[0])
+
+            cov1 = preprocessing.cov_matrix(stimulus_this)
+
+            stimulus_this_mean = stimulus_this.mean(axis=0, keepdims=True)
+            stimulus_this = stimulus_this - stimulus_this_mean
+            cov2 = np.matmul(stimulus_this.T, stimulus_this) / (num_stimulus_this - 1)
+
+            self.assertEqual(cov1.shape, shape_this * 2)
+            self.assertEqual(cov2.shape, shape_this * 2)
+            self.assertTrue(np.allclose(cov1, cov2, atol=1e-6))
 
 
 if __name__ == '__main__':
