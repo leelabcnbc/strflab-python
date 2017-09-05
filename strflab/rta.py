@@ -16,7 +16,7 @@ def rta(stimulus_flat_all, response_all):
     T1, D = stimulus_flat_all.shape
     T2, M = response_all.shape
 
-    assert T1 == T2 and D > 0 and M > 0
+    assert T1 == T2 and D > 1 and M > 0
 
     fit_kernels = np.matmul(response_all.T, stimulus_flat_all) / response_all.T.sum(axis=1, keepdims=True)
 
