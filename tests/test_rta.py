@@ -1,38 +1,15 @@
 """essentially rewrite of /demo/rta.ipynb"""
 
 import unittest
-from strflab import test_util, preprocessing, rta
 from collections import OrderedDict
+
 import numpy as np
-from numpy.linalg import norm, svd, matrix_rank
+from numpy.linalg import svd, matrix_rank
 
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-
-def norm_vector(x):
-    assert x.ndim == 1
-    return x / norm(x)
-
-
-def cos_between(v1, v2):
-    assert v1.ndim == v2.ndim == 1
-    return np.dot(v1, v2) / norm(v1) / norm(v2)
-
+from strflab import test_util, preprocessing, rta
+from strflab.test_util import norm_vector, sigmoid, cos_between
 
 rng_stream_global = test_util.rng_stream
-
-
-def generate_correlation_matrix(size):
-    # <https://math.stackexchange.com/questions/357980/how-to-generate-random-symmetric-positive-definite-matrices-using-matlab
-    mix_cov = rng_stream_global.randn(size, size)
-    mix_cov = mix_cov * mix_cov.T + np.diag(rng_stream_global.rand(size) * 0.00001)
-    # then svd
-    U, S, Vh = svd(mix_cov)
-    # using broadcasting, `*S` is same as `@diag(S)`.
-    return (U * (S ** 0.5)).T
-    # stim_in_non_white = stim_in
 
 
 def generate_out_dict(stim_in, kernel_to_recover):
@@ -99,7 +76,7 @@ class TestPreprocessing(unittest.TestCase):
             stim_in = rng_stream_global.randn(100000, kernel_to_recover.size)
 
             # generate some cov matrix.
-            transform_matrix = generate_correlation_matrix(kernelsize)
+            transform_matrix = test_util.generate_correlation_matrix(kernelsize)
             assert matrix_rank(transform_matrix) == kernelsize
             stim_in_nonwhite = np.matmul(stim_in, transform_matrix)
             svd_cov = svd(preprocessing.cov_matrix(stim_in_nonwhite))
@@ -121,7 +98,7 @@ class TestPreprocessing(unittest.TestCase):
             stim_in = rng_stream_global.randn(100000, kernelsize)
 
             # generate some cov matrix.
-            transform_matrix = generate_correlation_matrix(kernelsize)
+            transform_matrix = test_util.generate_correlation_matrix(kernelsize)
 
             assert matrix_rank(transform_matrix) == kernelsize
             stim_in_nonwhite = np.matmul(stim_in, transform_matrix)

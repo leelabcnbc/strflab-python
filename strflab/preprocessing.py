@@ -82,8 +82,8 @@ def check_input(stimulus_list, response_list):
 
 
 def reshape_kernel(kernels_recovered, stim_shape, num_delay, num_neuron, multiple_kernel_per_neuron=False):
-    assert np.all(np.asarray(stim_shape)>0) and num_delay > 0
-    num_kernel_element = num_delay*np.prod(np.asarray(stim_shape))
+    assert np.all(np.asarray(stim_shape) > 0) and num_delay > 0
+    num_kernel_element = num_delay * np.prod(np.asarray(stim_shape))
     assert num_neuron > 0 and num_kernel_element > 0
     if multiple_kernel_per_neuron:
         a, b, c = kernels_recovered.shape
@@ -111,11 +111,11 @@ def _check_input_one(stimulus, response):
 
 
 def cov_matrix(stim):
-    N, D = stim.shape
-    assert N > 1 and D > 1  # when D is 1, returned might be a scalar...
+    n, d = stim.shape
+    assert n > 1 and d > 1  # when D is 1, returned might be a scalar...
     # compute covariance matrix
     # notice that while np.cov would subtract the mean, you should do it yourself when passing stim into STA and STC.
     # this norms data by N-1
     cov = np.cov(stim, rowvar=False)
-    assert cov.shape == (D, D)
+    assert cov.shape == (d, d)
     return cov

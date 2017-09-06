@@ -44,6 +44,41 @@ def truncate_alternative(array_this, truncate_config):
         raise RuntimeError('impossible')
 
 
+def generate_a_list_of_kernels(ndim, num_neuron, num_filter_per_neuron, delays_this):
+    for x in delays_this:
+        assert -2 <= x <= 2
+    shape_this = tuple(test_util.get_random_shape(ndim, ndim, 1, 10))
+
+    num_kernel_pixel_each = np.product(np.asarray(shape_this)) * len(delays_this)
+    result_flat_kernel = np.empty((num_neuron, num_filter_per_neuron, num_kernel_pixel_each))
+
+    ref_structured_kernel = np.empty((num_neuron, num_filter_per_neuron, len(delays_this),) + shape_this)
+
+    for i_neuron in range(num_neuron):
+        stim_list = []
+        for i_filter in range(num_filter_per_neuron):
+            stimulus_this = test_util.get_random_stimulus(shape_this, 5)
+            stim_list.append(stimulus_this)
+        assert len(stim_list) == num_filter_per_neuron
+        # prepare delayed version
+        stim_list_flat = preprocessing.flatten_stimulus_list(stim_list)
+        stim_list_delayed = preprocessing.prepare_stimulus_all_delays_all_trials(stim_list_flat,
+                                                                                 delays_this,
+                                                                                 truncate_pars=(2, 2))
+        assert len(stim_list_delayed) == num_filter_per_neuron
+        for i_filter in range(num_filter_per_neuron):
+            assert stim_list_delayed[i_filter].shape == (1, num_kernel_pixel_each)
+            # fill in
+            result_flat_kernel[i_neuron, i_filter] = stim_list_delayed[i_filter].ravel()
+
+            # construct the structured one
+            # fetch data from different delays
+            for i_delay, delay in enumerate(delays_this):
+                # -, not +, as delay > 0 means past
+                ref_structured_kernel[i_neuron, i_filter, i_delay] = stim_list[i_filter][2 - delay]
+    return result_flat_kernel, ref_structured_kernel, shape_this
+
+
 class TestPreprocessing(unittest.TestCase):
     def setUp(self):
         rng_stream_global.seed(0)
@@ -167,49 +202,15 @@ class TestPreprocessing(unittest.TestCase):
                                        delay_all_array(stim_list, delays_this)]
                 self.check_two_list_equal(stim_list_delayed_2, stim_list_delayed)
 
-    def generate_a_list_of_kernels(self, ndim, num_neuron, num_filter_per_neuron, delays_this):
-        for x in delays_this:
-            assert -2 <= x <= 2
-        shape_this = tuple(test_util.get_random_shape(ndim, ndim, 1, 10))
-
-        num_kernel_pixel_each = np.product(np.asarray(shape_this)) * len(delays_this)
-        result_flat_kernel = np.empty((num_neuron, num_filter_per_neuron, num_kernel_pixel_each))
-
-        ref_structured_kernel = np.empty((num_neuron, num_filter_per_neuron, len(delays_this),) + shape_this)
-
-        for i_neuron in range(num_neuron):
-            stim_list = []
-            for i_filter in range(num_filter_per_neuron):
-                stimulus_this = test_util.get_random_stimulus(shape_this, 5)
-                stim_list.append(stimulus_this)
-            assert len(stim_list) == num_filter_per_neuron
-            # prepare delayed version
-            stim_list_flat = preprocessing.flatten_stimulus_list(stim_list)
-            stim_list_delayed = preprocessing.prepare_stimulus_all_delays_all_trials(stim_list_flat,
-                                                                                     delays_this,
-                                                                                     truncate_pars=(2, 2))
-            assert len(stim_list_delayed) == num_filter_per_neuron
-            for i_filter in range(num_filter_per_neuron):
-                assert stim_list_delayed[i_filter].shape == (1, num_kernel_pixel_each)
-                # fill in
-                result_flat_kernel[i_neuron, i_filter] = stim_list_delayed[i_filter].ravel()
-
-                # construct the structured one
-                # fetch data from different delays
-                for i_delay, delay in enumerate(delays_this):
-                    # -, not +, as delay > 0 means past
-                    ref_structured_kernel[i_neuron, i_filter, i_delay] = stim_list[i_filter][2 - delay]
-        return result_flat_kernel, ref_structured_kernel, shape_this
-
-    def test_reshape_kernel_single(self):
+    def test_reshape_kernel(self):
         for delays_this, ndim, num_neuron, num_filter, multi in product([[0], [-1, 1], [-2, -1, 0, 1], ],
                                                                         (1, 4), (1, 10), (1, 10), (True, False)):
             if num_filter > 1 and not multi:
                 continue
-            result_flat_kernel, ref_structured_kernel, shape_this = self.generate_a_list_of_kernels(
+            result_flat_kernel, ref_structured_kernel, shape_this = generate_a_list_of_kernels(
                 ndim, num_neuron, num_filter, delays_this
             )
-            print(result_flat_kernel.shape, ref_structured_kernel.shape)
+            # print(result_flat_kernel.shape, ref_structured_kernel.shape)
 
             if multi:
                 structured_kernel = preprocessing.reshape_kernel(result_flat_kernel, shape_this,
