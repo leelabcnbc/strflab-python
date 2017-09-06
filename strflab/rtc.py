@@ -57,6 +57,7 @@ def rtc(stimulus_flat_all, response_all, correction=False, svd_of_cov_matrix=Non
         irrelevant_trans = None
     else:
         u, s, _ = svd_of_cov_matrix
+        assert np.all(s > 0) and u.shape == (d, d)
         # compute forward mapping. Eq. (22)
         forward_mapping = (u * (s ** (-0.5))).T
         # Eq. (22)
