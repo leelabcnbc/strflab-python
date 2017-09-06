@@ -13,10 +13,10 @@ def rta(stimulus_flat_all, response_all):
     :param response_all: T x M np.ndarray.
     :return: a MxD np.ndarray, each row being response triggered average for each neuron.
     """
-    T1, D = stimulus_flat_all.shape
-    T2, M = response_all.shape
+    t1, d = stimulus_flat_all.shape
+    t2, m = response_all.shape
 
-    assert T1 == T2 and D > 0 and M > 0
+    assert t1 == t2 and d > 1 and m > 0
 
     fit_kernels = np.matmul(response_all.T, stimulus_flat_all) / response_all.T.sum(axis=1, keepdims=True)
 
@@ -25,10 +25,10 @@ def rta(stimulus_flat_all, response_all):
 
 def correct_rta(fit_kernels, svd_of_cov_matrix):
     """correct for bias in rta result due to correlation in stimulus"""
-    U, S, _ = svd_of_cov_matrix
-    M, D = fit_kernels.shape
+    u, s, _ = svd_of_cov_matrix
+    m, d = fit_kernels.shape
     # assumes full SVD
-    assert U.shape == (D, D) and S.shape == (D,) and (S > 0).all()
-    cov_inv = np.matmul(np.matmul(U, np.diag(1 / S)), U.T)
+    assert u.shape == (d, d) and s.shape == (d,) and (s > 0).all()
+    cov_inv = np.matmul(np.matmul(u, np.diag(1 / s)), u.T)
     # cov_inv.T or cov_inv shouldn't matter, as cov_inv is symmetric. Here just for theoretic correctness.
     return np.matmul(fit_kernels, cov_inv.T)
