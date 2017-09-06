@@ -77,7 +77,6 @@ def rtc(stimulus_flat_all, response_all, correction=False, svd_of_cov_matrix=Non
     result = _compute_svd_all(cov_all, relevant_trans, irrelevant_trans)
     _compute_svd_all_check_shape(result, m, d)
     # return everything.
-    # TODO: check that the rta returned here (should be last relevant eigenvector) is same as the STA returned by rta.
     return result
 
 

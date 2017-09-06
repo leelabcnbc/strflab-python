@@ -151,6 +151,8 @@ def check_data_stc(test_instance: unittest.TestCase, stim_in_this, kernels, intr
 
             if project_sta:
                 # shoulc check rta
+                # check that the rta returned here (should be last relevant eigenvector)
+                # is equivalent as the STA returned by rta.
                 rta_from_rtc = vector_relevant_list[:, -1]
                 assert rta_from_rtc.shape == rta_all.shape
                 cos_values = np.asarray([cos_between(v1, v2) for v1, v2 in zip(rta_from_rtc, rta_all)])
