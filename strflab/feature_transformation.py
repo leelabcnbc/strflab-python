@@ -12,7 +12,7 @@ def generator_all_valid_pairs(shape, locality=None):
         locality = (0,) * len(shape)
     assert len(shape) == len(locality) and isinstance(shape, tuple) and isinstance(locality, tuple) and len(shape) > 0
     locality = np.array(locality)
-    assert np.all(locality >= 0) and locality.shape == (len(shape),)
+    assert np.all(locality >= 0) and locality.shape == (len(shape),) and np.all(locality < np.array(shape))
     num_el = int(np.product(shape))
     assert num_el > 0
     # then compute the multi index version.
